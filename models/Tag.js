@@ -14,7 +14,8 @@ Tag.init(
       autoIncrement: true
     },
     tag_id: {
-      type: DataTypes.STRING
+      type: DataTypes.STRING,
+      allowNull: false
     }
   },
   {
