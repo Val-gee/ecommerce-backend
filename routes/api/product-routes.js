@@ -11,7 +11,15 @@ router.get('/', async (req, res) => {
     console.log('GET /api/products');
 
     const productData = await Product.findAll({
-      include: [{ model: Category}]
+      include: [
+        {
+          model: Category
+        },
+        {
+          model: Tag,
+          through: ProductTag,
+          as: 'product_tags'
+        }]
     });
 
     res.status(200).json(productData);
@@ -29,11 +37,19 @@ router.get('/:id', async (req, res) => {
     console.log('GET /api/products/:id');
 
     const productById = await Product.findByPk(req.params.id, {
-      include: [{ model: Category}]
+      include: [
+        {
+          model: Category
+        },
+        {
+          model: Tag,
+          through: ProductTag,
+          as: 'product_tags'
+        }]
     });
 
     res.status(200).json(productById);
-  } catch(err) {
+  } catch (err) {
     res.status(500).json(err)
   }
 });
@@ -118,7 +134,7 @@ router.delete('/:id', async (req, res) => {
     });
 
     res.status(200).json(deleteProduct);
-  } catch(err) {
+  } catch (err) {
     res.status(400).json(err)
   }
 });

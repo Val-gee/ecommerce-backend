@@ -8,7 +8,13 @@ router.get('/', async (req, res) => {
   try {
     console.log('GET /api/tags');
 
-    const tagData = await Tag.findAll();
+    const tagData = await Tag.findAll({
+      include: [{
+        model: Product,
+        through: ProductTag,
+        as: 'product_names'
+      }]
+    });
 
     res.status(200).json(tagData);
 
@@ -22,8 +28,17 @@ router.get('/:id', async (req, res) => {
   // be sure to include its associated Product data
   try {
     console.log('GET /api/tags/:id');
-
-    const tagById = await Tag.findByPk(req.params.id);
+    const tagById = await Tag.findOne({
+      where: {
+        id: req.params.id
+      }, include: [
+        {
+          model: Product,
+          through: ProductTag,
+          as: 'product_names'
+        }
+      ]
+    })
 
     res.status(200).json(tagById);
 
@@ -46,25 +61,54 @@ router.post('/', async (req, res) => {
 });
 
 router.put('/:id', async (req, res) => {
+  console.log('PUT /api/tags/:id');
+
+  Tag.update(req.body, { where: { id: req.params.id } })
+    .then((tag) => {
+      return ProductTag.findAll({ where: { tag_id: req.params.id } })
+    })
+    .then((tagProducts) => {
+      const productIds = tagProducts.map(({ product_id }) => product_id);
+
+      const newTag = req.body.product_id
+        .filter((product_id) => !productIds.includes(product_id))
+        .map((product_id) => {
+          return { tag_id: req.params.id, product_id }
+        });
+
+      const tagsToRemove = Tag
+        .filter(({ product_id }) => !req.body.productsIds.includes(product_id))
+        .map(({ id }) => id);
+
+      return Promise.all([
+        ProductTag.destroy({ where: { id: tagsToRemove } }),
+        ProductTag.bulkCreate(newTag),
+      ])
+    })
+    .then((updatedTags) => res.json(updatedTags))
+    .catch((err) => {
+      console.log(err)
+      res.status(400).json(err)
+    })
   // update a tag's name by its `id` value
-  try {
-    console.log('PUT /api/tags/:id');
+  // try {
+  //   console.log('PUT /api/tags/:id');
 
-    const updateTag = await Tag.update(
-      {
-        tag_id: req.body.tag_name
-      },
-      {
-        where: {
-          id: req.params.id
-        },
-      }
-    );
+  //   const updateTag = await Tag.update(
+  //     {
+  //       tag_id: req.body.tag_name
+  //     },
+  //     {
+  //       where: {
+  //         id: req.params.id
+  //       },
+  //     }
+  //   );
 
-    res.status(200).json(updateTag);
-  } catch (err) {
-    res.status(500).json(err);
-  }
+  //   res.status(200).json(updateTag);
+  // } catch (err) {
+  //   res.status(500).json(err);
+  // }
 });
 
 router.delete('/:id', async (req, res) => {
